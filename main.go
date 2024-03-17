@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
@@ -20,11 +21,11 @@ type apiConfig struct {
 }
 
 func main() {
-	feed, err := urlToFeed(("https://wagslane.dev/index.html"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(feed)
+	// feed, err := urlToFeed(("https://wagslane.dev/index.html"))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Println(feed)
 
 
 	godotenv.Load()
@@ -43,10 +44,12 @@ func main() {
 	if err != nil {
 		log.Fatal("Cannot connect to database:", err)
 	}
-
+	db := database.New(conn)
 	apiCfg := apiConfig{
 		DB: database.New(conn),
 	}
+
+	go startScraping(db, 10, time.Minute)
 
 	router := chi.NewRouter()
 
@@ -77,6 +80,7 @@ func main() {
 		"/feed_follow/{feedFollowID}",
 		apiCfg.middlewareAuth(apiCfg.handlerDeleteFeedFollow),
 	)
+	v1Router.Get("/posts", apiCfg.middlewareAuth(apiCfg.handlerGetPostsForUser))
 
 	router.Mount("/v1", v1Router)
 
